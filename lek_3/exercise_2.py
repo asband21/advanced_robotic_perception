@@ -1,10 +1,11 @@
 import cv2
 import numpy as np
 
-cap = cv2.VideoCapture('slow_traffic_small.mp4')
+cap = cv2.VideoCapture('slow_traffic_small_2.mp4')
 ret, frame = cap.read()
 ll = frame.shape
 flow_map = np.zeros((ll[0]-3, ll[1]-1,3), np.uint8)
+kernel = np.ones((5,5),np.float32)/25
 iii = 1
 while cap.isOpened():
     print(iii)
@@ -14,6 +15,8 @@ while cap.isOpened():
     ll = frame.shape
     ret, frame = cap.read()
 
+    frame = cv2.filter2D(frame,-1,kernel)
+    
     if not ret:
         print("Can't receive frame (stream end?). Exiting ...")
         break
@@ -30,11 +33,10 @@ while cap.isOpened():
             brik_dif =img_dif[i:i+3, j:j+3].flatten()
 
             x, residuals, rank, s = np.linalg.lstsq(xy, brik_dif, rcond=None)
-            #print(x)
-
+            
             flow_map[i, j, 0] = x[0]
             flow_map[i, j, 1] = x[1]
-            
+    flow_map = flow_map/500
     cv2.imshow('frame', frame)
     cv2.imshow('flow map', flow_map)
     cv2.imshow('frame sob x', sob_x)
