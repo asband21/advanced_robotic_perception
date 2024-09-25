@@ -23,6 +23,9 @@ for i in range(sz[0] - pash):
     for j in range(sz[1] - pash):
         bil_ix = ix[i:i+pash, j:j+pash]
         bil_iy = iy[i:i+pash, j:j+pash]
+        cov_vec = np.array([bil_ix.flatten(), bil_iy.flatten()])
+        cov = np.cov(cov_vec)
+        print(cov)
 
 ixx = 0
 ixy = 0
