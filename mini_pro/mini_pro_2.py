@@ -38,3 +38,21 @@ cv2.imshow("img 3", img_3)
 
 cv2.waitKey(0)
 
+
+def fillDissimilarityTable(imgL, imgR, dis, scanline)
+{
+	unsigned short int y, alpha;
+
+	for (y = 0 ; y < g_cols ; y++)
+		for (alpha = 0 ; alpha <= g_maxdisp ; alpha++)  {
+			if (y+alpha < g_cols)  {
+				dis[(g_maxdisp + 1)*y+alpha] = 2 * abs(imgL[g_cols*scanline+y+alpha] - imgR[g_cols*scanline+y]);
+			}
+		}
+        for y in range(1, img_0.shape[0]-2):
+}
+
+def matchScanlines(imgL, imgR)
+    
+    fillDissimilarityTable(imgL, img R , dis, scanlines)
+
