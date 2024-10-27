@@ -27,10 +27,16 @@ def computeIntensityGradientsX_2(imgL, imgR, th):
     th = 5
     w = 3
 
+    zo = np.zeros((SLOP, 1))
     Il = imgL.copy()
     Ir = imgL.copy()
-    #print(imgL.shape)
-    for i in range(imgL.shape[0]-2):
+
+    #print(Il.shape)
+    Il = np.append(Il, zo)
+    Ir = np.append(Ir, zo)
+
+    #print(Il.shape)
+    for i in range(Il.shape[0]-2):
         sub_Il = Il[i:i+w]
         sub_Ir = Ir[i:i+w]
         if(th <=  sub_Il.max() - sub_Il.min()):
@@ -46,11 +52,13 @@ def computeIntensityGradientsX_2(imgL, imgR, th):
 
     return Il, Ir
 
+NO_DISCONTINUITY = 0
 FIRST_MATCH = 65535
 DEFAULT_COST = 600
 MAXDISP = 20
 SLOP = MAXDISP + 1
 
+reward = 5 * 2
 occ_pen = 25 * 2 # This is the occlusion penalty.  
 
 delta = 20 # Maximum disparity
@@ -67,6 +75,9 @@ img_3 = cv2.absdiff(img_0, img_1)
 
 img_0 = cv2.blur(img_0,(5,5))
 img_1 = cv2.blur(img_1,(5,5))
+
+depth_discontinuities = img_0.copy() * 0
+disparity_map = img_0.copy()
 
 phi = np.zeros((img_0.shape[1] + SLOP, MAXDISP + 1))
 pie_y = np.zeros((img_0.shape[1] + SLOP, MAXDISP + 1))
@@ -102,21 +113,96 @@ for i in range(1, img_0.shape[0]-2):
             for delta_p in range(MAXDISP):
                 y_p = y - max(1, delta_p - delta_a + 1)
                 #if delta_a == delta_p or                      skal implamer når for stødet er nok nogrt man synmaik programers ikke fyldige fælder
-                #print(f"phi[{y_p}][{delta_p}] = {phi[y_p][delta_p]}" )
-                phi_new = phi[y_p][delta_p] + occ_pen * (delta_a != delta_p)
-                #print(f"phi:{phi_new}")
-                if (phi_new < phi_best):
-                    phi_best = phi_new;
-                    pie_y_best = y_p;
-                    pie_d_best = delta_p;
+                if delta_a == delta_p or (delta_a > delta_p and 0  == Il_igr[y + delta_a - 1]) or (delta_a < delta_p and 0 == Ir_igr[y_p+1]): 
+                #if delta_a == delta_p:
+                #    pass
+                #print(f"Il_igr[{y} + {delta_a} - 1]: Il_igr[{y + delta_a - 1}]")
+                #if delta_a > delta_p and 0  == Il_igr[y + delta_a - 1]:
+                #    pass
+                #if delta_a < delta_p and 0 == Ir_igr[y_p+1]:
+                    #print(f"phi[{y_p}][{delta_p}] = {phi[y_p][delta_p]}" )
+                    phi_new = phi[y_p][delta_p] + occ_pen * (delta_a != delta_p)
+                    #print(f"phi:{phi_new}")
+                    if (phi_new < phi_best):
+                        phi_best = phi_new;
+                        pie_y_best = y_p;
+                        pie_d_best = delta_p;
+
+        phi[y][delta_a] = phi_best + pixel_disparity[y][delta_a] - reward
+        pie_y[y][delta_a] = pie_y_best
+        pie_d[y][delta_a] = pie_d_best
+
+
 
 
     print(f"scanline:{i}")
-
-
+    pie_d_best = np.argmin(phi[i])
+    phi_best = phi[i][pie_d_best];
+    """
+    phi_best = INF;
+    for (deltaa = 0 ; deltaa <= MAXDISP ; deltaa++)  {
+      if (phi[y][deltaa] <= phi_best)  {
+        phi_best = phi[y][deltaa];
+        pie_y_best = y;
+        pie_d_best = deltaa;
+      }
+    }
+    """
 
 
     #cv2.waitKey(0)
+
+    for j in range(img_0.shape[1]-1 , 1):
+        disparity_map[i][j] = pie_d_best
+        depth_discontinuities[i][j] = NO_DISCONTINUITY
+
+
+    """
+    {
+      int x, x1, x2, y1, y2, deltaa1, deltaa2;
+      
+      y1 = pie_y_best;         deltaa1 = pie_d_best;         x1 = y1 + deltaa1;
+      y2 = pie_y[y1][deltaa1]; deltaa2 = pie_d[y1][deltaa1]; x2 = y2 + deltaa2;
+      
+      for (x = COLS - 1 ; x >= x1 ; x--)  {
+        disparity_map[scanline][x] = deltaa1;
+        depth_discontinuities[scanline][x] = NO_DISCONTINUITY;
+      }
+      
+      while (y2 != FIRST_MATCH)  {
+        if (deltaa1 == deltaa2)  {
+          disparity_map[scanline][x2] = deltaa2;
+          depth_discontinuities[scanline][x2] = NO_DISCONTINUITY;
+        }
+        else if (deltaa2 > deltaa1)  {
+          disparity_map[scanline][x2] = deltaa2;
+          depth_discontinuities[scanline][x2] = DISCONTINUITY;
+        }
+        else {
+          disparity_map[scanline][x1 - 1] = deltaa2;
+          depth_discontinuities[scanline][x1 - 1] = DISCONTINUITY;
+          for (x = x1 - 2 ; x >= x2 ; x--)  {
+            disparity_map[scanline][x] = deltaa2;
+            depth_discontinuities[scanline][x] = NO_DISCONTINUITY;
+          }
+        }
+        y1 = y2;                 deltaa1 = deltaa2;            x1 = y1 + deltaa1;
+        y2 = pie_y[y1][deltaa1]; deltaa2 = pie_d[y1][deltaa1]; x2 = y2 + deltaa2;
+      }
+      
+      for (x = y1 + deltaa1 - 1 ; x >= 0 ; x--)  {
+        disparity_map[scanline][x] = deltaa1;
+        depth_discontinuities[scanline][x] = NO_DISCONTINUITY;
+      }
+    }
+
+
+    """
+
+cv2.imshow("phi", phi)
+cv2.imshow("pie_y", pie_y)
+cv2.imshow("pie_d", pie_d)
+
 
 cv2.imshow("img 0", img_0)
 cv2.imshow("img 1", img_1)
