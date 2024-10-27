@@ -156,6 +156,8 @@ for i in range(1, img_0.shape[0]-2):
         disparity_map[i][j] = pie_d_best
         depth_discontinuities[i][j] = NO_DISCONTINUITY
 
+    y2 = pie_y[i][pie_d_best]
+    while y2 != FIRST_MATCH:
 
     """
     {
@@ -202,7 +204,8 @@ for i in range(1, img_0.shape[0]-2):
 cv2.imshow("phi", phi)
 cv2.imshow("pie_y", pie_y)
 cv2.imshow("pie_d", pie_d)
-
+cv2.imshow("disparity_map", disparity_map)
+cv2.imshow("depth_discontinuities", depth_discontinuities)
 
 cv2.imshow("img 0", img_0)
 cv2.imshow("img 1", img_1)
