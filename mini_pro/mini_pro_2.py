@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
 
-
+def fillDissimilarityTable():
+    pass
 
 def computeIntensityGradientsX(imgL, imgR, th):
     th = 5
@@ -68,8 +69,10 @@ tr = 14 # Reliability threshold
 a = 0.15 # Reliability buffer factor
 
 # Open picture
-img_0 = cv2.imread("data/delivery_area_1l/im0.png" , cv2.IMREAD_GRAYSCALE)
-img_1 = cv2.imread("data/delivery_area_1l/im1.png" , cv2.IMREAD_GRAYSCALE)
+#img_0 = cv2.imread("data/delivery_area_1l/im0.png" , cv2.IMREAD_GRAYSCALE)
+#img_1 = cv2.imread("data/delivery_area_1l/im1.png" , cv2.IMREAD_GRAYSCALE)
+img_0 = cv2.imread("b1.pgm" , cv2.IMREAD_GRAYSCALE)
+img_1 = cv2.imread("b2.pgm" , cv2.IMREAD_GRAYSCALE)
 img_2 = img_1.copy()
 img_3 = cv2.absdiff(img_0, img_1)
 
@@ -92,11 +95,18 @@ for i in range(1, img_0.shape[0]-2):
     Ir = img_2[i].copy().astype(float)
     
     pixel_disparity = np.zeros((img_0.shape[1], delta*2))
-    for j in range(1, img_0.shape[1]-2):
-        for k in range(j-delta,j+delta,1):
-            if(k >= 0 and k <= img_0.shape[1]-1):
-                mids = abs(Il[k] - Ir[j])
-                pixel_disparity[j][k-j+delta] = mids
+    for j in range(1, img_0.shape[1]-1):
+        for k in range(0, MAXDISP):
+            if(j + k < img_0.shape[1]):
+                pixel_disparity[j][k] = 2 * abs(Il[k+k] - Ir[j])
+    """
+         for (y = 0 ; y < COLS ; y++)
+          for (alpha = 0 ; alpha <= MAXDISP ; alpha++)  {
+              if (y+alpha < COLS)  {
+                  dis[y][alpha] = 2 * abs(imgL[scanline][y+alpha] - imgR[scanline][y]);
+              }
+          }
+    """
     
     cv2.imshow("img", pixel_disparity)
     #cv2.imwrite(f"pixel_disparity_{i}.png",pixel_disparity)
@@ -106,27 +116,26 @@ for i in range(1, img_0.shape[0]-2):
 
     for j in range(phi.shape[1]-1):
         phi[0][j] = DEFAULT_COST + pixel_disparity[0][j]
+        pie_y[0][j] = FIRST_MATCH
+        pie_d[0][j] = FIRST_MATCH
+    
+    #for delta_p in range(MAXDISP + 1):
+    #    phi[0][delta_p] = DEFAULT_COST + dis[0][delta_p]
 
     for y in range(1, img_0.shape[1]-2):
         for delta_a in range(MAXDISP):
             phi_best = float("inf")
             for delta_p in range(MAXDISP):
                 y_p = y - max(1, delta_p - delta_a + 1)
-                #if delta_a == delta_p or                      skal implamer når for stødet er nok nogrt man synmaik programers ikke fyldige fælder
-                if delta_a == delta_p or (delta_a > delta_p and 0  == Il_igr[y + delta_a - 1]) or (delta_a < delta_p and 0 == Ir_igr[y_p+1]): 
-                #if delta_a == delta_p:
-                #    pass
-                #print(f"Il_igr[{y} + {delta_a} - 1]: Il_igr[{y + delta_a - 1}]")
-                #if delta_a > delta_p and 0  == Il_igr[y + delta_a - 1]:
-                #    pass
-                #if delta_a < delta_p and 0 == Ir_igr[y_p+1]:
-                    #print(f"phi[{y_p}][{delta_p}] = {phi[y_p][delta_p]}" )
-                    phi_new = phi[y_p][delta_p] + occ_pen * (delta_a != delta_p)
-                    #print(f"phi:{phi_new}")
-                    if (phi_new < phi_best):
-                        phi_best = phi_new;
-                        pie_y_best = y_p;
-                        pie_d_best = delta_p;
+                if y_p >= 0:
+                    #if delta_a == delta_p or                      skal implamer når for stødet er nok nogrt man synmaik programers ikke fyldige fælder
+                    if delta_a == delta_p or (delta_a > delta_p and 0  == Il_igr[y + delta_a - 1]) or (delta_a < delta_p and 0 == Ir_igr[y_p+1]): 
+                        phi_new = phi[y_p][delta_p] + occ_pen * (delta_a != delta_p)
+                        print(f"{phi[y_p][delta_p] + occ_pen * (delta_a != delta_p)} = {phi[y_p][delta_p]} + {occ_pen} * {(delta_a != delta_p)}")
+                        if (phi_new < phi_best):
+                            phi_best = phi_new;
+                            pie_y_best = y_p;
+                            pie_d_best = delta_p;
 
         phi[y][delta_a] = phi_best + pixel_disparity[y][delta_a] - reward
         pie_y[y][delta_a] = pie_y_best
