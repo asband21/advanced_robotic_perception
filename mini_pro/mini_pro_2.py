@@ -157,7 +157,44 @@ for i in range(1, img_0.shape[0]-2):
         depth_discontinuities[i][j] = NO_DISCONTINUITY
 
     y2 = pie_y[i][pie_d_best]
+    
+
+    y1 =        int(pie_y_best)
+    deltaa1 =   int(pie_d_best)
+    x1 =        int(y1 + deltaa1)
+    y2 =        int(pie_y[y1][deltaa1])
+    deltaa2 =   int(pie_d[y1][deltaa1])
+    x2 = y2 +   int(deltaa2)
+
+
+    jjj = 00
+    print("")
+    print("")
     while y2 != FIRST_MATCH:
+        print(y2)
+
+        if deltaa1 == deltaa2:
+            disparity_map[i][x2] = deltaa2
+            depth_discontinuities[i][x2] = NO_DISCONTINUITY;
+        elif deltaa2 > deltaa1:
+            disparity_map[i][x2] = deltaa2
+            depth_discontinuities[i][x2] = DISCONTINUITY
+        else:
+            disparity_map[i][x1 - 1] = deltaa2
+            depth_discontinuities[i][x1 - 1] = DISCONTINUITY
+            #for (x = x1 - 2 ; x >= x2 ; x--):
+            for x in range(x1-2, x2-1, -1): 
+                disparity_map[i][x] = deltaa2
+                depth_discontinuities[i][x] = NO_DISCONTINUITY
+        
+        y1 =        int(y2)
+        deltaa1 =   int(deltaa2)
+        x1 =        int(y1 + deltaa1)
+        y2 =        int(pie_y[int(y1)][int(deltaa1)])
+        deltaa2 =   int(pie_d[int(y1)][int(deltaa1)])
+        x2 =        int(y2 + deltaa2)
+        
+        #print(f" {y2} = pie_y[{y1}][{deltaa1}]")
 
     """
     {
