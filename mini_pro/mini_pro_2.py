@@ -41,18 +41,17 @@ def computeIntensityGradientsX_2(imgL, imgR, th):
         sub_Il = Il[i:i+w]
         sub_Ir = Ir[i:i+w]
         if(th <=  sub_Il.max() - sub_Il.min()):
-            Il[i] = 1000
+            Il[i] = 0
         else:
-            Il[i] = 0 
+            Il[i] = 1000 
         if(th <=  sub_Ir.max() - sub_Ir.min()):
-            Ir[i] = 1000
+            Ir[i] = 0
         else:
-            Ir[i] = 0 
-
-
+            Ir[i] = 1000 
 
     return Il, Ir
 
+DISCONTINUITY = 255
 NO_DISCONTINUITY = 0
 FIRST_MATCH = 65535
 DEFAULT_COST = 600
@@ -73,14 +72,18 @@ a = 0.15 # Reliability buffer factor
 #img_1 = cv2.imread("data/delivery_area_1l/im1.png" , cv2.IMREAD_GRAYSCALE)
 img_0 = cv2.imread("b1.pgm" , cv2.IMREAD_GRAYSCALE)
 img_1 = cv2.imread("b2.pgm" , cv2.IMREAD_GRAYSCALE)
+
 img_2 = img_1.copy()
 img_3 = cv2.absdiff(img_0, img_1)
 
 img_0 = cv2.blur(img_0,(5,5))
 img_1 = cv2.blur(img_1,(5,5))
 
-depth_discontinuities = img_0.copy() * 0
-disparity_map = img_0.copy()
+#depth_discontinuities = img_0.copy() * 0
+#disparity_map = img_0.copy()
+
+depth_discontinuities = np.zeros((img_0.shape[0] + SLOP, img_0.shape[1] + SLOP))
+disparity_map = np.zeros((img_0.shape[0] + SLOP, img_0.shape[1] + SLOP))
 
 phi = np.zeros((img_0.shape[1] + SLOP, MAXDISP + 1))
 pie_y = np.zeros((img_0.shape[1] + SLOP, MAXDISP + 1))
@@ -89,13 +92,12 @@ pie_d = np.zeros((img_0.shape[1] + SLOP, MAXDISP + 1))
 
 print(f"{(img_0.shape[1] + SLOP, MAXDISP + 1)} = (img_0.shape[1] + SLOP, MAXDISP + 1)")
 
-
-for i in range(1, img_0.shape[0]-2):
+for i in range(0, img_0.shape[0]-1):
     Il = img_0[i].copy().astype(float)
     Ir = img_2[i].copy().astype(float)
     
     pixel_disparity = np.zeros((img_0.shape[1], delta*2))
-    for j in range(1, img_0.shape[1]-1):
+    for j in range(0, img_0.shape[1]-1):
         for k in range(0, MAXDISP):
             if(j + k < img_0.shape[1]):
                 pixel_disparity[j][k] = 2 * abs(Il[k+k] - Ir[j])
@@ -113,6 +115,15 @@ for i in range(1, img_0.shape[0]-2):
 
     Il_igr, Ir_igr = computeIntensityGradientsX_2(Il, Ir, 5)
 
+    """
+    for j in Il_igr:
+        print(j)
+    print("")
+    print("----------------------------------------")
+    print("")
+    for j in Ir_igr:
+        print(j)
+    """
 
     for j in range(phi.shape[1]-1):
         phi[0][j] = DEFAULT_COST + pixel_disparity[0][j]
@@ -121,8 +132,10 @@ for i in range(1, img_0.shape[0]-2):
     
     #for delta_p in range(MAXDISP + 1):
     #    phi[0][delta_p] = DEFAULT_COST + dis[0][delta_p]
+    pie_y_best = 1000
+    pie_d_best = 1000
 
-    for y in range(1, img_0.shape[1]-2):
+    for y in range(0, img_0.shape[1]-1):
         for delta_a in range(MAXDISP):
             phi_best = float("inf")
             for delta_p in range(MAXDISP):
@@ -131,11 +144,11 @@ for i in range(1, img_0.shape[0]-2):
                     #if delta_a == delta_p or                      skal implamer når for stødet er nok nogrt man synmaik programers ikke fyldige fælder
                     if delta_a == delta_p or (delta_a > delta_p and 0  == Il_igr[y + delta_a - 1]) or (delta_a < delta_p and 0 == Ir_igr[y_p+1]): 
                         phi_new = phi[y_p][delta_p] + occ_pen * (delta_a != delta_p)
-                        print(f"{phi[y_p][delta_p] + occ_pen * (delta_a != delta_p)} = {phi[y_p][delta_p]} + {occ_pen} * {(delta_a != delta_p)}")
+                        #print(f"{phi[y_p][delta_p] + occ_pen * (delta_a != delta_p)} = {phi[y_p][delta_p]} + {occ_pen} * {(delta_a != delta_p)}")
                         if (phi_new < phi_best):
-                            phi_best = phi_new;
-                            pie_y_best = y_p;
-                            pie_d_best = delta_p;
+                            phi_best = phi_new
+                            pie_y_best = y_p
+                            pie_d_best = delta_p
 
         phi[y][delta_a] = phi_best + pixel_disparity[y][delta_a] - reward
         pie_y[y][delta_a] = pie_y_best
@@ -177,12 +190,13 @@ for i in range(1, img_0.shape[0]-2):
 
 
     jjj = 00
-    print("")
-    print("")
+    print("...............................")
     while y2 != FIRST_MATCH:
         print(y2)
 
         if deltaa1 == deltaa2:
+            print(disparity_map.shape)
+            print(f"disparity_map[{i}][{x2}]")
             disparity_map[i][x2] = deltaa2
             depth_discontinuities[i][x2] = NO_DISCONTINUITY;
         elif deltaa2 > deltaa1:
@@ -250,8 +264,13 @@ for i in range(1, img_0.shape[0]-2):
 cv2.imshow("phi", phi)
 cv2.imshow("pie_y", pie_y)
 cv2.imshow("pie_d", pie_d)
+
 cv2.imshow("disparity_map", disparity_map)
 cv2.imshow("depth_discontinuities", depth_discontinuities)
+
+cv2.imwrite("disparity_map.png", disparity_map)
+cv2.imwrite("depth_discontinuities.png", depth_discontinuities)
+
 
 cv2.imshow("img 0", img_0)
 cv2.imshow("img 1", img_1)
